@@ -1,0 +1,31 @@
+node{
+    stage('Pull Source code from GitHub'){
+        git 'https://github.com/sachin3645/jenkins.git'
+    }
+    stage('Build Dockerfile'){
+        sh 'docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+        sh 'docker image tag $JOB_NAME:v1.$BUILD_ID sachinkr21/$JOB_NAME:v1.$BUILD_ID'
+        sh 'docker image tag $JOB_NAME:v1.$BUILD_ID sachinkr21/$JOB_NAME:latest'
+    }
+    stage('Push Image to DockerHub'){
+        withCredentials([string(credentialsId: 'dockerhubpassword', variable: 'dockerhubpassword')]) {
+    // some block
+        sh 'docker login -u sachinkr21 -p ${dockerhubpassword}'
+        sh 'docker image push sachinkr21/$JOB_NAME:v1.$BUILD_ID'
+        sh 'docker image push sachinkr21/$JOB_NAME:latest'
+
+        sh 'docker image rmi $JOB_NAME:v1.$BUILD_ID sachinkr21/$JOB_NAME:v1.$BUILD_ID sachinkr21/$JOB_NAME:latest' 
+        }
+    }
+    stage('Deployment of Docker Container'){
+        def dockerrun='docker run -p 8080:80 -d --name cloudknowledge sachinkr21/scripted-pipeline-demo:latest'
+        def dockerrm = 'docker container rm -f cloudknowledge'
+        def dockerimagerm = 'docker image rmi sachinkr21/scripted-pipeline-demo'
+
+        sshagent(['dockerhostpassword']){
+            sh 'ssh -o StrictHostKeyChecking=no ec2-user@<IP> ${dockerrm}'
+            sh 'ssh -o StrictHostKeyChecking=no ec2-user@<IP> ${dockerimagerm}'
+            sh 'ssh -o StrictHostKeyChecking=no ec2-user@<IP> ${dockerrun}'
+        }
+    }
+}
