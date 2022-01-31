@@ -1,0 +1,8 @@
+pipeline{
+    agent any
+    stages{
+      stage('Welcome'){
+        echo "Welcome to my Jenkins Declarative pipeline"
+      }
+    }
+}
